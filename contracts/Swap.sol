@@ -35,6 +35,7 @@ contract Swap is ReentrancyGuard {
 
     // Order properties
     struct Order {
+        uint256 id;
         address maker;
         address sellToken;
         address buyToken;
@@ -71,6 +72,7 @@ contract Swap is ReentrancyGuard {
         uint256 _orderId = orderId + 1;
         Order storage order = orders[_orderId];
 
+        order.id = _orderId;
         order.maker = msg.sender;
         order.sellToken = _sellToken;
         order.buyToken = _buyToken;

@@ -9,6 +9,9 @@ contract Swap is ReentrancyGuard {
 
     using SafeERC20 for IERC20;
 
+    /**
+     * @dev Custom Errors - covering invalid scenarios
+    */
     error ZeroValueNotAllowed();
     error AddressZeroDetected();
     error InsufficientBalance();
@@ -17,6 +20,7 @@ contract Swap is ReentrancyGuard {
     error SellerisBuyer();
     error usernOTowner();
     error OrderNotActive();
+    error InvalidOrder();
 
     uint256 orderId;
 
@@ -31,10 +35,19 @@ contract Swap is ReentrancyGuard {
 
     mapping (uint256 => Order) orders;
     // Track a user's orders
-    mapping (address => mapping (uint256 => Order)) userOrder; 
+    mapping (address => uint256[]) aUsersOrder; 
 
     event OrderCreated(address user, uint256 amount, uint256 orderId);
+    event OrderCancelled(uint256 orderId);
+    event Orderfilled(uint256 orderId);
 
+    /**
+     * @dev Creates a new order by depositing the sell token and specifying the buy token and amount.
+     *
+     * @param _sellToken The token to be sold.
+     * @param _buyToken The token to be bought.
+     * @param _amount The amount of tokens to be sold.
+    */
     function deposit(address _sellToken, address _buyToken, uint256 _amount) external nonReentrant {
 
         if (msg.sender == address(0)) revert AddressZeroDetected();
@@ -56,13 +69,21 @@ contract Swap is ReentrancyGuard {
         order.buyAmount = _amount;
         order.isOrderActive = true;
 
+        orderId++;
+
         emit OrderCreated(msg.sender, _amount, _orderId);
     }
 
+    /**
+     * @dev Fills an existing order by transferring the buy token to the seller and receiving the sell token.
+     *
+     * @param _orderId The ID of the order to be filled.
+    */
     function fillOrder(uint256 _orderId) external nonReentrant {
         if (msg.sender == address(0)) revert AddressZeroDetected();
         Order storage order = orders[_orderId];
         if (msg.sender == order.maker) revert SellerisBuyer();
+        if (_orderId > orderId) revert InvalidOrder();
 
         uint256 _userBalance = IERC20(order.buyToken).balanceOf(msg.sender);
         if (_userBalance < order.buyAmount) revert InsufficientBalance();
@@ -75,9 +96,16 @@ contract Swap is ReentrancyGuard {
 
         // Mark order as inactive
         order.isOrderActive = false;
+
+        emit Orderfilled(_orderId);
         
     }
 
+    /**
+     * @dev Cancels an existing order by transferring the sell token back to the seller.
+     *
+     * @param _orderId The ID of the order to be cancelled.
+    */
     function cancelOrder(uint256 _orderId) external nonReentrant {
 
         Order storage order = orders[_orderId];
@@ -91,7 +119,7 @@ contract Swap is ReentrancyGuard {
         // Mark order as inactive
         order.isOrderActive = false;
 
-        // emit OrderCancelled(_orderId);
+        emit OrderCancelled(_orderId);
     }
 
 }

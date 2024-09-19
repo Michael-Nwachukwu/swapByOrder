@@ -11,6 +11,15 @@ contract Swap is ReentrancyGuard {
 
     /**
      * @dev Custom Errors - covering invalid scenarios
+     * `ZeroValueNotAllowed()`: Reverts if a zero value is passed.
+     * `AddressZeroDetected()`: Reverts if an address zero is detected.
+     * `InsufficientBalance()`: Reverts if the user's balance is insufficient.
+     * `InvalidOrderId()`: Reverts if an invalid order ID is passed.
+     * `TransactionCompleted()`: Reverts if a transaction is already completed.
+     * `SellerisBuyer()`: Reverts if the seller is also the buyer.
+     * `usernOTowner()`: Reverts if the user is not the owner of the order.
+     * `OrderNotActive()`: Reverts if the order is not active.
+     * `InvalidOrder()`: Reverts if the order is invalid.
     */
     error ZeroValueNotAllowed();
     error AddressZeroDetected();
@@ -24,6 +33,7 @@ contract Swap is ReentrancyGuard {
 
     uint256 orderId;
 
+    // Order properties
     struct Order {
         address maker;
         address sellToken;
@@ -33,9 +43,8 @@ contract Swap is ReentrancyGuard {
         bool isOrderActive;
     }
 
-    mapping (uint256 => Order) orders;
-    // Track a user's orders
-    mapping (address => uint256[]) aUsersOrder; 
+    mapping (uint256 => Order) orders; // Tracks orders
+    mapping (address => uint256[]) aUsersOrder; // Track a user's orders
 
     event OrderCreated(address user, uint256 amount, uint256 orderId);
     event OrderCancelled(uint256 orderId);
@@ -48,7 +57,7 @@ contract Swap is ReentrancyGuard {
      * @param _buyToken The token to be bought.
      * @param _amount The amount of tokens to be sold.
     */
-    function deposit(address _sellToken, address _buyToken, uint256 _amount) external nonReentrant {
+    function createOrder(address _sellToken, address _buyToken, uint256 _amount) external nonReentrant {
 
         if (msg.sender == address(0)) revert AddressZeroDetected();
         if (_amount <= 0) revert ZeroValueNotAllowed();
@@ -120,6 +129,23 @@ contract Swap is ReentrancyGuard {
         order.isOrderActive = false;
 
         emit OrderCancelled(_orderId);
+    }
+
+    /**
+     * @dev Returns an array of orders created by the current user.
+     *
+     * @return An array of orders.
+    */
+    function getUsersOrder() external view returns (Order[] memory) {
+
+        uint256[] memory orderIds = aUsersOrder[msg.sender];
+        Order[] memory userOrders = new Order[](orderIds.length);
+
+        for (uint256 i = 0; i < orderIds.length; i++) {
+            userOrders[i] = orders[orderIds[i]];
+        }
+
+        return userOrders;
     }
 
 }
